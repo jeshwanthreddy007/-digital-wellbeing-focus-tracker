@@ -1,0 +1,1584 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>FocusTrack — Digital Wellbeing & Focus Tracker</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+/* ============================================================
+   DESIGN TOKENS
+   Palette: quiet-study mood — warm paper background, deep
+   forest ink text, sage as the working accent, amber for
+   streak/attention, clay for warnings. Fraunces (serif) carries
+   headline personality; Manrope (sans) carries data & UI.
+   ============================================================ */
+:root{
+  --paper:      #0A0F0C;
+  --paper-2:    #121914;
+  --ink:        #EAF3EC;
+  --ink-soft:   #8FA396;
+  --line:       #223028;
+  --sage:       #39E07A;
+  --sage-ink:   #06170D;
+  --sage-dark:  #2BC168;
+  --sage-tint:  rgba(57,224,122,0.13);
+  --amber:      #FFB020;
+  --amber-tint: rgba(255,176,32,0.13);
+  --clay:       #FF6B6B;
+  --clay-tint:  rgba(255,107,107,0.13);
+  --blue:       #55A9FF;
+  --blue-tint:  rgba(85,169,255,0.13);
+  --radius-sm:  8px;
+  --radius-md:  14px;
+  --shadow:     0 0 0 1px var(--line), 0 8px 28px rgba(0,0,0,0.45);
+  --glow-sage:  0 0 18px rgba(57,224,122,0.35);
+  --glow-sage-soft: 0 0 10px rgba(57,224,122,0.22);
+  --serif: 'Fraunces', Georgia, serif;
+  --sans: 'Manrope', -apple-system, BlinkMacSystemFont, sans-serif;
+}
+*{box-sizing:border-box;}
+html,body{margin:0;padding:0;}
+body{
+  font-family: var(--sans);
+  background: var(--paper);
+  color: var(--ink);
+  -webkit-font-smoothing: antialiased;
+}
+button{font-family: var(--sans); cursor:pointer;}
+input,select{font-family: var(--sans);}
+h1,h2,h3{font-family: var(--serif); margin:0; color:var(--ink); font-weight:600; font-optical-sizing:auto; letter-spacing:-0.01em;}
+p{margin:0;}
+a{color:inherit;}
+::selection{background:var(--sage); color:var(--sage-ink);}
+
+/* focus visibility for accessibility */
+a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible{
+  outline: 2px solid var(--sage-dark);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce){
+  *{animation-duration:0.01ms !important; transition-duration:0.01ms !important;}
+}
+
+/* ============================================================
+   ONBOARDING MODAL (local profile — no accounts, no server)
+   ============================================================ */
+.modal-overlay{
+  position:fixed; inset:0; background:rgba(5,8,6,0.72);
+  display:none; align-items:center; justify-content:center;
+  z-index:100; padding:20px;
+}
+.modal-overlay.show{display:flex;}
+.modal-card{
+  background: var(--paper-2); border:1px solid var(--line); border-radius: var(--radius-md);
+  box-shadow: var(--shadow); padding:28px 26px; max-width:340px; width:100%;
+  text-align:center;
+}
+.modal-mark{ width:44px; height:44px; margin:0 auto 14px; }
+.modal-card h2{font-size:19px; margin-bottom:8px;}
+.modal-sub{font-size:13px; color:var(--ink-soft); line-height:1.5; margin-bottom:16px;}
+.modal-card input{
+  width:100%; padding:10px 12px; border-radius:var(--radius-sm); border:1.5px solid var(--line);
+  background:var(--paper); color:var(--ink); font-size:14px; text-align:center;
+}
+.modal-card input:focus{border-color:var(--sage);}
+
+/* ============================================================
+   APP SHELL
+   ============================================================ */
+.app{
+  display:flex;
+  min-height:100vh;
+}
+
+/* ---------- Sidebar ---------- */
+.sidebar{
+  width: 232px;
+  flex-shrink:0;
+  background: var(--paper-2);
+  color: var(--ink);
+  padding: 24px 16px;
+  display:flex;
+  flex-direction:column;
+  position: sticky;
+  top:0;
+  height:100vh;
+  border-right: 1px solid var(--line);
+}
+.brand{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  margin-bottom: 30px;
+  padding-left: 6px;
+}
+.brand-mark{
+  width: 34px; height:34px;
+  border-radius: 10px;
+  background: var(--sage-tint);
+  flex-shrink:0;
+  display:flex; align-items:center; justify-content:center;
+  font-size:17px;
+}
+.brand-name{
+  font-family: var(--serif);
+  font-size: 16.5px;
+  font-weight: 800;
+  line-height:1.15;
+  color: var(--ink);
+}
+.brand-name span{display:block; font-family:var(--sans); font-weight:500; font-size:11px; color:var(--ink-soft); letter-spacing:.02em;}
+
+nav.navlist{display:flex; flex-direction:column; gap:3px;}
+.navlink{
+  display:flex;
+  align-items:center;
+  gap:11px;
+  padding:10px 12px;
+  border-radius: var(--radius-sm);
+  background:transparent;
+  border:none;
+  color: var(--ink-soft);
+  font-size:14px;
+  font-weight:700;
+  text-align:left;
+  width:100%;
+  transition: background .15s ease, color .15s ease;
+}
+.navlink .ic{font-size:16px; width:18px; text-align:center;}
+.navlink:hover{ background: var(--sage-tint); color: var(--sage); }
+.navlink.active{ background: var(--sage); color:var(--sage-ink); box-shadow: var(--glow-sage); }
+
+.tip-card{
+  margin-top:18px;
+  background: var(--sage-tint);
+  border-radius: var(--radius-md);
+  padding:14px;
+  font-size:12px;
+}
+.tip-card .tip-title{font-weight:800; color:var(--sage-dark); margin-bottom:4px; display:block;}
+.tip-card .tip-body{color:var(--ink-soft); line-height:1.4;}
+
+.sidebar-foot{
+  margin-top:auto;
+  padding-top: 16px;
+  border-top: 1px solid var(--line);
+}
+.streak-pill{
+  display:flex; align-items:center; gap:10px;
+  background: var(--amber-tint);
+  border-radius: var(--radius-md);
+  padding: 10px 12px;
+  margin-bottom: 10px;
+}
+.streak-pill .flame{font-size:19px;}
+.streak-pill .num{font-family:var(--serif); font-size:18px; font-weight:800; line-height:1; color:var(--ink);}
+.streak-pill .lbl{font-size:10.5px; color:var(--ink-soft); text-transform:uppercase; letter-spacing:.04em;}
+
+.user-chip{
+  display:flex; align-items:center; gap:10px;
+  padding:8px 6px; margin-bottom:6px;
+  background:none; border:none; width:100%; text-align:left; border-radius:var(--radius-sm);
+  transition: background .15s ease;
+}
+.user-chip:hover{background:var(--sage-tint);}
+.user-chip .av{
+  width:30px; height:30px; border-radius:50%; background:var(--sage);
+  color:var(--sage-ink); font-weight:800; font-size:12.5px; display:flex; align-items:center; justify-content:center; flex-shrink:0;
+}
+.user-chip .name{font-size:13px; font-weight:800; line-height:1.2;}
+.user-chip .sub{font-size:11px; color:var(--ink-soft);}
+
+.reset-link{
+  background:none; border:none; color:var(--ink-soft); font-size:12px; padding:6px;
+  text-decoration: underline; text-underline-offset:2px;
+}
+.reset-link:hover{color:var(--clay);}
+
+/* ---------- Main ---------- */
+.main{
+  flex:1;
+  min-width:0;
+  width:100%;
+  padding:34px 40px 60px;
+  max-width:1180px;
+}
+.view{display:none;}
+.view.active{display:block; animation: viewIn .28s ease;}
+@keyframes viewIn{ from{opacity:0; transform:translateY(6px);} to{opacity:1; transform:translateY(0);} }
+
+.view-head{margin-bottom:26px;}
+.view-head h1{font-size: 27px;}
+.view-head .sub{color:var(--ink-soft); font-size:14.5px; margin-top:4px;}
+
+/* ============================================================
+   CARDS / PRIMITIVES
+   ============================================================ */
+.card{
+  background: var(--paper-2);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  padding: 20px;
+  box-shadow: var(--shadow);
+  transition: box-shadow .2s ease, border-color .2s ease;
+}
+.card:hover{ border-color: rgba(57,224,122,0.28); }
+.grid-4{
+  display:grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap:14px;
+  margin-bottom:18px;
+}
+.grid-2{
+  display:grid;
+  grid-template-columns: 1.3fr 1fr;
+  gap:16px;
+  align-items:start;
+}
+.grid-3{
+  display:grid;
+  grid-template-columns: 1.2fr 1fr 1fr;
+  gap:16px;
+  align-items:start;
+  margin-bottom:16px;
+}
+.stat-card{
+  padding:16px 16px;
+}
+.stat-card .stat-top{display:flex; justify-content:space-between; align-items:flex-start;}
+.icon-badge{
+  width:34px; height:34px; border-radius:9px;
+  display:flex; align-items:center; justify-content:center;
+  font-size:16px; flex-shrink:0;
+}
+.stat-card .val{font-family:var(--serif); font-size:23px; font-weight:800; margin-top:12px; line-height:1;}
+.stat-card .lbl{font-size:12px; color:var(--ink-soft); margin-top:4px;}
+.stat-card .delta{font-size:11px; margin-top:8px; font-weight:700;}
+.delta.up{color:var(--sage);}
+.delta.down{color:var(--clay);}
+.delta.flat{color:var(--ink-soft);}
+
+.section-title{
+  font-family:var(--serif); font-size:15.5px; font-weight:800; margin-bottom:12px;
+  display:flex; align-items:center; justify-content:space-between; gap:7px;
+}
+.section-title .link-out{font-size:12px; font-weight:700; color:var(--sage); text-decoration:none; cursor:pointer;}
+
+/* trend line chart */
+.trend-wrap{position:relative;}
+.trend-svg{width:100%; height:150px; display:block;}
+.trend-path{fill:none; stroke:var(--sage); stroke-width:2.5; stroke-linecap:round; stroke-linejoin:round;}
+.trend-area{fill:url(#trendGradient); opacity:.5;}
+.trend-dot{fill:var(--sage); stroke:#fff; stroke-width:2;}
+.trend-labels{display:flex; justify-content:space-between; font-size:11px; color:var(--ink-soft); margin-top:4px;}
+
+/* mini activity list on dashboard */
+.mini-act-row{display:flex; align-items:center; gap:10px; padding:9px 0; border-top:1px solid var(--line);}
+.mini-act-row:first-child{border-top:none; padding-top:2px;}
+.mini-act-ic{width:30px; height:30px; border-radius:8px; display:flex; align-items:center; justify-content:center; font-size:14px; flex-shrink:0;}
+.mini-act-name{font-size:13px; font-weight:700;}
+.mini-act-meta{font-size:11.5px; color:var(--ink-soft);}
+.mini-act-time{margin-left:auto; font-size:11px; color:var(--ink-soft); flex-shrink:0;}
+
+/* quick focus card on dashboard */
+.quick-focus{text-align:center; padding-top:4px;}
+.quick-focus .qf-time{font-family:var(--serif); font-size:34px; font-weight:800; margin:10px 0 4px;}
+.quick-focus .qf-sub{font-size:12px; color:var(--ink-soft); margin-bottom:14px;}
+.qf-btn{width:100%; background:var(--sage); color:var(--sage-ink); border:none; padding:11px; border-radius:var(--radius-sm); font-weight:800; font-size:13.5px;}
+.qf-btn:hover{background:var(--sage-dark); box-shadow: var(--glow-sage);}
+
+/* quote banner */
+.quote-banner{
+  margin-top:18px; padding:18px 22px; background: var(--sage-tint);
+  border-radius: var(--radius-md); display:flex; align-items:center; gap:12px;
+  font-size:14px; font-style:italic; color:var(--sage-dark); font-weight:600;
+}
+.quote-banner .qmark{font-size:22px; opacity:.6;}
+
+.card + .card{margin-top:16px;}
+
+.empty-state{
+  text-align:center;
+  padding: 26px 14px;
+  color: var(--ink-soft);
+  font-size:13.5px;
+}
+.empty-state .big{font-size:26px; display:block; margin-bottom:8px;}
+.btn-sample{
+  margin-top:10px;
+  background: var(--sage); color:var(--sage-ink); border:none;
+  padding:8px 16px; border-radius: var(--radius-sm); font-weight:700; font-size:13px;
+}
+.btn-sample:hover{background:var(--sage-dark);}
+
+/* progress bars (goals) */
+.goal-row{margin-bottom:16px;}
+.goal-row:last-child{margin-bottom:0;}
+.goal-row .goal-top{display:flex; justify-content:space-between; font-size:13.5px; margin-bottom:6px;}
+.goal-row .goal-top .name{font-weight:700;}
+.goal-row .goal-top .amt{color:var(--ink-soft);}
+.bar-track{height:9px; background: var(--sage-tint); border-radius: 20px; overflow:hidden;}
+.bar-fill{height:100%; background: var(--sage); border-radius:20px; transition: width .4s ease; box-shadow: var(--glow-sage-soft);}
+.bar-fill.over{background: var(--clay); box-shadow: 0 0 10px rgba(255,107,107,0.35);}
+
+/* insights & recommendations */
+.insight-item{
+  display:flex; gap:10px; align-items:flex-start;
+  padding: 10px 0;
+  font-size:13.5px;
+  border-top:1px solid var(--line);
+}
+.insight-item:first-child{border-top:none; padding-top:2px;}
+.insight-item .ic{font-size:15px; flex-shrink:0; margin-top:1px;}
+
+/* donut */
+.donut-wrap{display:flex; align-items:center; gap:18px;}
+.donut{
+  width:112px; height:112px; border-radius:50%; flex-shrink:0;
+  background: conic-gradient(var(--line) 0deg 360deg);
+}
+.donut-legend{display:flex; flex-direction:column; gap:7px; font-size:12.5px;}
+.legend-row{display:flex; align-items:center; gap:7px;}
+.legend-dot{width:9px; height:9px; border-radius:50%; flex-shrink:0;}
+.legend-name{flex:1; color:var(--ink-soft);}
+.legend-val{font-weight:700;}
+
+/* weekly bar chart */
+.chart{display:flex; align-items:flex-end; gap:10px; height:140px; padding-top:6px;}
+.chart-col{flex:1; display:flex; flex-direction:column; align-items:center; gap:6px; height:100%; justify-content:flex-end;}
+.chart-bars{display:flex; gap:3px; align-items:flex-end; height:110px;}
+.chart-bar{width:9px; border-radius:3px 3px 0 0; background:var(--sage); min-height:2px; transition:height .3s ease;}
+.chart-bar.screen{background:var(--amber);}
+.chart-day{font-size:11px; color:var(--ink-soft); font-weight:700;}
+.chart-key{display:flex; gap:16px; font-size:12px; color:var(--ink-soft); margin-bottom:10px;}
+.chart-key span{display:flex; align-items:center; gap:6px;}
+.chart-key i{width:9px; height:9px; border-radius:2px; display:inline-block;}
+
+.mini-stats{display:flex; gap:12px; margin-top:16px;}
+.mini-stat{flex:1; text-align:center; padding:12px; background:var(--paper); border-radius:var(--radius-sm); border:1px solid var(--line);}
+.mini-stat .v{font-family:var(--serif); font-size:19px; font-weight:700;}
+.mini-stat .l{font-size:11px; color:var(--ink-soft); margin-top:3px;}
+
+/* ============================================================
+   TIMER VIEW
+   ============================================================ */
+.timer-wrap{display:flex; gap:30px; align-items:center; flex-wrap:wrap;}
+.ring-box{position:relative; width:230px; height:230px; flex-shrink:0;}
+.ring-box svg{transform: rotate(-90deg);}
+.ring-bg{fill:none; stroke: var(--sage-tint); stroke-width:14;}
+.ring-fg{fill:none; stroke: var(--sage); stroke-width:14; stroke-linecap:round; transition: stroke-dashoffset 1s linear; filter: drop-shadow(0 0 8px rgba(57,224,122,0.55));}
+.ring-center{
+  position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center;
+}
+.ring-time{font-family:var(--serif); font-size:40px; font-weight:700;}
+.ring-label{font-size:12px; color:var(--ink-soft); text-transform:uppercase; letter-spacing:.05em; margin-top:2px;}
+
+.timer-controls{flex:1; min-width:230px;}
+.preset-row{display:flex; gap:10px; margin-bottom:16px;}
+.preset-btn{
+  flex:1; padding:12px; border-radius:var(--radius-sm); border:1.5px solid var(--line);
+  background:var(--paper-2); font-weight:700; font-size:14px; color:var(--ink);
+}
+.preset-btn.active{border-color:var(--sage); background:var(--sage-tint); color:var(--sage); box-shadow: var(--glow-sage-soft);}
+.preset-btn:disabled{opacity:.5; cursor:not-allowed;}
+
+.timer-actions{display:flex; gap:10px;}
+.tbtn{
+  flex:1; padding:12px; border-radius:var(--radius-sm); border:none; font-weight:700; font-size:14px;
+}
+.tbtn.primary{background:var(--sage); color:var(--sage-ink);}
+.tbtn.primary:hover{background:var(--sage-dark); box-shadow: var(--glow-sage);}
+.tbtn.ghost{background:var(--paper-2); border:1.5px solid var(--line); color:var(--ink);}
+.tbtn.ghost:hover{border-color:var(--sage);}
+.tbtn:disabled{opacity:.4; cursor:not-allowed;}
+.timer-status{font-size:13px; color:var(--ink-soft); margin-top:14px;}
+.session-log{margin-top:22px;}
+.session-item{display:flex; justify-content:space-between; font-size:13px; padding:8px 0; border-top:1px solid var(--line);}
+.session-item:first-child{border-top:none;}
+
+/* ============================================================
+   ACTIVITIES VIEW
+   ============================================================ */
+.form-grid{display:grid; grid-template-columns: 1.4fr 1fr .8fr auto; gap:10px; align-items:end;}
+.field label{display:block; font-size:12px; font-weight:700; color:var(--ink-soft); margin-bottom:5px;}
+.field input, .field select{
+  width:100%; padding:9px 10px; border-radius:var(--radius-sm); border:1.5px solid var(--line);
+  background:var(--paper-2); font-size:13.5px; color:var(--ink);
+}
+.field input:focus, .field select:focus{border-color:var(--sage);}
+.btn-add{
+  background:var(--sage); color:var(--sage-ink); border:none; padding:10px 18px; border-radius:var(--radius-sm); font-weight:700; font-size:13.5px; height:38px;
+}
+.btn-add:hover{background:var(--sage-dark); box-shadow: var(--glow-sage);}
+.field-error{color:var(--clay); font-size:11.5px; margin-top:5px; min-height:14px;}
+
+.activity-table-wrap{overflow-x:auto;}
+.activity-table{width:100%; min-width:620px; border-collapse:collapse; margin-top:18px; font-size:13.5px;}
+.activity-table th{text-align:left; font-size:11px; text-transform:uppercase; letter-spacing:.04em; color:var(--ink-soft); padding-bottom:8px; border-bottom:1.5px solid var(--line);}
+.activity-table td{padding:10px 6px; border-bottom:1px solid var(--line);}
+.cat-badge{padding:3px 9px; border-radius:20px; font-size:11px; font-weight:700; display:inline-block;}
+.del-btn{background:none; border:none; color:var(--clay); font-size:12px; font-weight:700;}
+.del-btn:hover{text-decoration:underline;}
+
+/* ============================================================
+   GOALS VIEW
+   ============================================================ */
+.goal-editor{display:flex; gap:14px; margin-top:14px; flex-wrap:wrap;}
+.goal-editor .field{flex:1; min-width:160px;}
+.btn-save{background:var(--sage); color:var(--sage-ink); border:none; padding:10px 18px; border-radius:var(--radius-sm); font-weight:700; font-size:13.5px; height:38px;}
+.btn-save:hover{background:var(--sage-dark); box-shadow: var(--glow-sage);}
+.saved-msg{font-size:12.5px; color:var(--sage); font-weight:700; margin-left:4px; opacity:0; transition:opacity .3s;}
+.saved-msg.show{opacity:1;}
+
+/* badges */
+.badge{padding:2px 9px; border-radius:20px; font-size:11px; font-weight:700;}
+.badge.low{background:var(--sage-tint); color:var(--sage);}
+.badge.med{background:var(--amber-tint); color:var(--amber);}
+.badge.high{background:var(--clay-tint); color:var(--clay);}
+
+footer.app-footer{margin-top:34px; font-size:11.5px; color:var(--ink-soft); text-align:center;}
+
+/* ============================================================
+   OVERVIEW VIEW
+   ============================================================ */
+.ov-text{font-size:14px; line-height:1.6; color:var(--ink-soft);}
+.ov-list{margin:0; padding-left:20px; display:flex; flex-direction:column; gap:9px; font-size:13.5px; line-height:1.5; color:var(--ink-soft);}
+.ov-list li::marker{color:var(--sage);}
+.ov-list strong{color:var(--ink); font-weight:800;}
+.ov-list code{background:var(--sage-tint); color:var(--sage); padding:1px 6px; border-radius:5px; font-size:12.5px; font-family:var(--sans);}
+.ov-checklist{list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:10px; font-size:13.5px; color:var(--ink);}
+.ov-checklist .chk{
+  display:inline-flex; align-items:center; justify-content:center;
+  width:18px; height:18px; border-radius:5px; background:var(--sage); color:var(--sage-ink);
+  font-size:11px; font-weight:800; margin-right:9px; flex-shrink:0;
+}
+
+/* ============================================================
+   RESPONSIVE
+   ============================================================ */
+@media (max-width: 880px){
+  .grid-2{grid-template-columns:1fr;}
+  .grid-3{grid-template-columns:1fr;}
+  .grid-4{grid-template-columns: repeat(3, 1fr);}
+  .form-grid{grid-template-columns:1fr 1fr;}
+}
+@media (max-width: 720px){
+  .app{flex-direction:column;}
+  .sidebar{
+    width:100%; height:auto; position:sticky; top:0; z-index:10;
+    flex-direction:row; align-items:center; padding:12px 16px; overflow-x:auto;
+  }
+  .brand{margin-bottom:0; margin-right:14px;}
+  nav.navlist{flex-direction:row; gap:4px;}
+  .navlink span.txt{display:none;}
+  .navlink{padding:10px;}
+  .sidebar-foot{display:none;}
+  .main{padding:20px 16px 50px;}
+  .grid-4{grid-template-columns: 1fr 1fr;}
+  .form-grid{grid-template-columns:1fr;}
+  .timer-wrap{justify-content:center;}
+}
+</style>
+</head>
+<body>
+
+<!-- Lightweight local profile prompt — no server, no accounts; just personalizes the greeting & chip -->
+<div class="modal-overlay" id="onboardOverlay">
+  <div class="modal-card">
+    <div class="brand-mark modal-mark" aria-hidden="true">
+      <svg viewBox="0 0 24 24" width="22" height="22" fill="none">
+        <circle cx="12" cy="12" r="8.5" stroke="var(--sage)" stroke-width="1.6"/>
+        <path d="M8.3 13.7c0-3.1 2.1-5.7 6.2-6.2-.5 3.9-2.8 6.2-6.2 6.2z" fill="var(--sage)"/>
+      </svg>
+    </div>
+    <h2>Welcome to FocusTrack</h2>
+    <p class="modal-sub">What should we call you? This stays on this device only — there's no account or server.</p>
+    <input type="text" id="onboardName" maxlength="24" placeholder="Your name" autocomplete="off" />
+    <button class="tbtn primary" id="onboardSaveBtn" type="button" style="width:100%; margin-top:12px;">Start tracking</button>
+  </div>
+</div>
+
+<div class="app">
+
+  <!-- ============ SIDEBAR ============ -->
+  <aside class="sidebar">
+    <div class="brand">
+      <div class="brand-mark" aria-hidden="true">
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="none">
+          <circle cx="12" cy="12" r="8.5" stroke="var(--sage)" stroke-width="1.6"/>
+          <path d="M8.3 13.7c0-3.1 2.1-5.7 6.2-6.2-.5 3.9-2.8 6.2-6.2 6.2z" fill="var(--sage)"/>
+        </svg>
+      </div>
+      <div class="brand-name">FocusTrack<span>Digital Wellbeing</span></div>
+    </div>
+    <nav class="navlist" id="navlist">
+      <button class="navlink" data-view="overview"><span class="ic">📋</span><span class="txt">Overview</span></button>
+      <button class="navlink active" data-view="dashboard"><span class="ic">🏠</span><span class="txt">Dashboard</span></button>
+      <button class="navlink" data-view="timer"><span class="ic">⏱️</span><span class="txt">Focus Timer</span></button>
+      <button class="navlink" data-view="activities"><span class="ic">📝</span><span class="txt">Activity Tracker</span></button>
+      <button class="navlink" data-view="goals"><span class="ic">🎯</span><span class="txt">Daily Goals</span></button>
+      <button class="navlink" data-view="analytics"><span class="ic">📊</span><span class="txt">Analytics</span></button>
+    </nav>
+    <div class="tip-card">
+      <span class="tip-title">🌿 Keep Going!</span>
+      <span class="tip-body">Small steps every day lead to big changes.</span>
+    </div>
+    <div class="sidebar-foot">
+      <div class="streak-pill">
+        <span class="flame">🔥</span>
+        <div>
+          <div class="num" id="streakNum">0</div>
+          <div class="lbl">Day Streak</div>
+        </div>
+      </div>
+      <button class="user-chip" id="userChip" type="button" title="Click to edit your name">
+        <div class="av" id="userAv">ST</div>
+        <div>
+          <div class="name" id="userName">Student</div>
+          <div class="sub">Stay productive!</div>
+        </div>
+      </button>
+      <button class="reset-link" id="resetBtn">Reset all data</button>
+    </div>
+  </aside>
+
+  <!-- ============ MAIN ============ -->
+  <main class="main">
+
+    <!-- ---------- PROJECT OVERVIEW ---------- -->
+    <section class="view" id="view-overview">
+      <div class="view-head">
+        <h1>Project Overview</h1>
+        <p class="sub">Digital Wellbeing &amp; Focus Tracker — problem, objectives, and scope</p>
+      </div>
+
+      <div class="card">
+        <div class="section-title">Problem Statement</div>
+        <p class="ov-text">Students and young professionals spend a large, often unmeasured share of their day on
+        entertainment and social apps, which crowds out focused study or work time and leaves people without a
+        clear picture of where their hours actually go. Most people don't lack the desire to be productive —
+        they lack visibility into their own habits and a simple way to build consistency day over day.</p>
+      </div>
+
+      <div class="card" style="margin-top:16px;">
+        <div class="section-title">Objectives</div>
+        <ul class="ov-list">
+          <li>Let a user log daily study, work, entertainment, social, and other screen activity in seconds.</li>
+          <li>Provide a distraction-free focus timer (Pomodoro-style) that automatically counts toward study time.</li>
+          <li>Turn raw logs into an at-a-glance dashboard: today's split, a 7-day trend, and a productivity score.</li>
+          <li>Let the user set personal study and screen-time goals and see live progress against them.</li>
+          <li>Surface plain-language insights and recommendations instead of just raw numbers.</li>
+          <li>Reward consistency with a day-streak so good habits compound over time.</li>
+        </ul>
+      </div>
+
+      <div class="grid-2" style="margin-top:16px;">
+        <div class="card">
+          <div class="section-title">Key Modules / Features</div>
+          <ul class="ov-list">
+            <li><strong>Dashboard</strong> — stat cards, category donut, productivity trend, streak, insights</li>
+            <li><strong>Focus Timer</strong> — 25/50 min sessions, animated progress ring, auto-logging</li>
+            <li><strong>Activity Tracker</strong> — add/remove activities by category and duration, with validation</li>
+            <li><strong>Goals</strong> — editable daily study goal and screen-time limit, live progress bars</li>
+            <li><strong>Weekly Analytics</strong> — 7-day study vs. screen-time chart and generated recommendations</li>
+          </ul>
+        </div>
+        <div class="card">
+          <div class="section-title">Technologies &amp; Tools</div>
+          <ul class="ov-list">
+            <li>HTML5 for structure and semantic layout</li>
+            <li>CSS3 (custom properties / design tokens, Grid &amp; Flexbox, responsive media queries)</li>
+            <li>Vanilla JavaScript (ES6) — DOM manipulation, event-driven view routing, no framework or build step</li>
+            <li>Browser <code>localStorage</code> for client-side persistence — works fully offline</li>
+            <li>Google Fonts (Fraunces + Manrope) for the type system</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="card" style="margin-top:16px;">
+        <div class="section-title">Expected Outcomes</div>
+        <ul class="ov-list">
+          <li>A user can see, within seconds of opening the app, whether today is on track against their goals.</li>
+          <li>Logged data persists between visits with no account or backend required.</li>
+          <li>Completing focus sessions and hitting daily goals visibly builds a streak, reinforcing the habit.</li>
+          <li>Weekly analytics make it possible to spot patterns (e.g. entertainment creeping up) and self-correct.</li>
+        </ul>
+      </div>
+
+      <div class="card" style="margin-top:16px;">
+        <div class="section-title">Milestones</div>
+        <ul class="ov-checklist">
+          <li><span class="chk">✓</span> Design system &amp; app shell (sidebar nav, 6 views, responsive layout)</li>
+          <li><span class="chk">✓</span> Activity Tracker module — add/validate/remove logged activity</li>
+          <li><span class="chk">✓</span> Focus Timer module — 25/50 min sessions, auto-logs to study time</li>
+          <li><span class="chk">✓</span> Goals module — editable targets with live progress bars</li>
+          <li><span class="chk">✓</span> Dashboard — stat cards, category donut, trend chart, streak, insights</li>
+          <li><span class="chk">✓</span> Weekly Analytics — 7-day chart, averages, generated recommendations</li>
+          <li><span class="chk">✓</span> Local persistence &amp; light personalization (name, data survives reloads)</li>
+        </ul>
+      </div>
+
+      <div class="card" style="margin-top:16px;">
+        <div class="section-title">Scope &amp; Design Decisions</div>
+        <p class="ov-text">This build is intentionally a client-side, single-user demo — a deliberate scope choice for a
+        PBL prototype, not an oversight:</p>
+        <ul class="ov-list" style="margin-top:10px;">
+          <li><strong>No backend/database:</strong> everything runs in one HTML file with <code>localStorage</code>,
+          so it's gradeable and demoable instantly with zero setup. A production version would move this to a
+          real database and API so data could sync across devices.</li>
+          <li><strong>Manual activity logging, not OS-level tracking:</strong> automatically capturing real screen
+          time requires a browser extension or native OS permissions that a sandboxed web page cannot access.
+          Self-logging is used here as the in-scope substitute.</li>
+          <li><strong>One local profile, not multi-user accounts:</strong> the name field personalizes the greeting
+          but isn't authentication — there's no login, password, or server-side identity.</li>
+        </ul>
+      </div>
+    </section>
+
+    <!-- ---------- DASHBOARD ---------- -->
+    <section class="view active" id="view-dashboard">
+      <div class="view-head" style="display:flex; align-items:flex-start; justify-content:space-between; gap:14px; flex-wrap:wrap;">
+        <div>
+          <h1 id="greeting">Good morning 👋</h1>
+          <p class="sub" id="todayDate">Today's overview</p>
+        </div>
+        <button class="qf-btn" id="addActivityBtn" style="width:auto; padding:11px 18px; display:flex; align-items:center; gap:6px;">+ Add Activity</button>
+      </div>
+
+      <div class="grid-4" id="statCards"><!-- filled by JS --></div>
+
+      <div class="grid-3">
+        <div class="card">
+          <div class="section-title">📱 Today's Overview</div>
+          <div id="dashDonut"><!-- filled by JS --></div>
+        </div>
+        <div class="card">
+          <div class="section-title">⏱️ Focus Timer</div>
+          <div class="quick-focus" id="dashQuickFocus"><!-- filled by JS --></div>
+        </div>
+        <div class="card">
+          <div class="section-title">🎯 Daily Goals</div>
+          <div id="dashGoals"><!-- filled by JS --></div>
+        </div>
+      </div>
+
+      <div class="grid-3">
+        <div class="card">
+          <div class="section-title">📈 Productivity Trend</div>
+          <div id="dashTrend"><!-- filled by JS --></div>
+        </div>
+        <div class="card">
+          <div class="section-title">Recent Activities</div>
+          <div id="dashRecentActivities"><!-- filled by JS --></div>
+        </div>
+        <div class="card">
+          <div class="section-title">🧠 Insights</div>
+          <div id="dashInsights"><!-- filled by JS --></div>
+        </div>
+      </div>
+
+      <div class="quote-banner"><span class="qmark">“</span><span id="quoteText">Discipline is choosing between what you want now and what you want most.</span></div>
+    </section>
+
+    <!-- ---------- FOCUS TIMER ---------- -->
+    <section class="view" id="view-timer">
+      <div class="view-head">
+        <h1>Focus Timer</h1>
+        <p class="sub">Pick a length, start the session, and it's logged automatically when it finishes.</p>
+      </div>
+      <div class="card">
+        <div class="timer-wrap">
+          <div class="ring-box">
+            <svg width="230" height="230" viewBox="0 0 230 230">
+              <circle class="ring-bg" cx="115" cy="115" r="100"></circle>
+              <circle class="ring-fg" id="ringFg" cx="115" cy="115" r="100" stroke-dasharray="628.3" stroke-dashoffset="0"></circle>
+            </svg>
+            <div class="ring-center">
+              <div class="ring-time" id="ringTime">25:00</div>
+              <div class="ring-label" id="ringState">Ready</div>
+            </div>
+          </div>
+          <div class="timer-controls">
+            <div class="preset-row" id="presetRow">
+              <button class="preset-btn active" data-min="25">25 min</button>
+              <button class="preset-btn" data-min="50">50 min</button>
+            </div>
+            <div class="timer-actions">
+              <button class="tbtn primary" id="startBtn">Start</button>
+              <button class="tbtn ghost" id="pauseBtn" disabled>Pause</button>
+              <button class="tbtn ghost" id="resetTimerBtn">Reset</button>
+            </div>
+            <p class="timer-status" id="timerStatus">Choose 25 or 50 minutes, then press Start. Completed sessions are recorded as study time automatically.</p>
+          </div>
+        </div>
+        <div class="session-log">
+          <div class="section-title">Today's completed sessions</div>
+          <div id="sessionLog"><div class="empty-state">No focus sessions completed yet today.</div></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ---------- ACTIVITY TRACKER ---------- -->
+    <section class="view" id="view-activities">
+      <div class="view-head">
+        <h1>Activity Tracker</h1>
+        <p class="sub">Log study or screen-time activity — the dashboard updates the moment you save.</p>
+      </div>
+      <div class="card">
+        <div class="section-title">Add an activity</div>
+        <form id="activityForm">
+          <div class="form-grid">
+            <div class="field">
+              <label for="actName">Activity</label>
+              <input type="text" id="actName" placeholder="e.g. YouTube, DSA notes" maxlength="40" required />
+            </div>
+            <div class="field">
+              <label for="actCategory">Category</label>
+              <select id="actCategory">
+                <option value="Study">Study</option>
+                <option value="Work">Work</option>
+                <option value="Entertainment">Entertainment</option>
+                <option value="Social">Social</option>
+                <option value="Other">Other</option>
+              </select>
+            </div>
+            <div class="field">
+              <label for="actDuration">Duration (min)</label>
+              <input type="number" id="actDuration" placeholder="45" min="1" max="600" required />
+            </div>
+            <button type="submit" class="btn-add">Save</button>
+          </div>
+          <div class="field-error" id="actError"></div>
+        </form>
+      </div>
+      <div class="card" style="margin-top:16px;">
+        <div class="section-title">Today's activities</div>
+        <div id="activityTableWrap"><!-- filled by JS --></div>
+      </div>
+    </section>
+
+    <!-- ---------- GOALS ---------- -->
+    <section class="view" id="view-goals">
+      <div class="view-head">
+        <h1>Goals</h1>
+        <p class="sub">Set daily targets. Progress is calculated live from today's logged activity and focus sessions.</p>
+      </div>
+      <div class="card">
+        <div class="section-title">Today's progress</div>
+        <div id="goalsProgress"><!-- filled by JS --></div>
+      </div>
+      <div class="card" style="margin-top:16px;">
+        <div class="section-title">Edit targets</div>
+        <div class="goal-editor">
+          <div class="field">
+            <label for="goalStudy">Study goal (hours / day)</label>
+            <input type="number" id="goalStudy" min="0.5" max="16" step="0.5" />
+          </div>
+          <div class="field">
+            <label for="goalScreen">Screen-time limit (hours / day)</label>
+            <input type="number" id="goalScreen" min="0.5" max="16" step="0.5" />
+          </div>
+          <div>
+            <button class="btn-save" id="saveGoalsBtn">Save goals</button>
+            <span class="saved-msg" id="goalsSavedMsg">Saved ✓</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ---------- WEEKLY ANALYTICS ---------- -->
+    <section class="view" id="view-analytics">
+      <div class="view-head">
+        <h1>Weekly Analytics</h1>
+        <p class="sub">The last 7 days, built from your logged activities and focus sessions.</p>
+      </div>
+      <div class="card">
+        <div class="section-title">Study &amp; screen-time trend</div>
+        <div id="weekChartFull"><!-- filled by JS --></div>
+        <div class="mini-stats" id="weekMiniStats"><!-- filled by JS --></div>
+      </div>
+      <div class="card" style="margin-top:16px;">
+        <div class="section-title">💡 Recommendations</div>
+        <div id="recommendations"><!-- filled by JS --></div>
+      </div>
+    </section>
+
+    <footer class="app-footer">Digital Wellbeing &amp; Focus Tracker — PBL Project · Data is stored locally in your browser</footer>
+  </main>
+</div>
+
+<script>
+/* ==================================================================
+   DIGITAL WELLBEING & FOCUS TRACKER
+   Vanilla JavaScript (ES6) · DOM manipulation · Event handlers
+   No page reloads — every view is a section toggled via nav clicks.
+
+   DATA MODEL (persisted in localStorage as JSON)
+   ------------------------------------------------------------------
+   activities: [{ id, name, category, minutes, date:'YYYY-MM-DD', ts }]
+   sessions:   [{ id, minutes, date:'YYYY-MM-DD', ts }]   (completed focus sessions)
+   goals:      { studyGoalHours, screenLimitHours }
+   ================================================================== */
+
+const STORAGE_KEY = 'dwft_state_v1';
+const CATEGORY_COLORS = {
+  Study: '#39E07A',
+  Work: '#55A9FF',
+  Entertainment: '#FFB020',
+  Social: '#FF6B6B',
+  Other: '#9AB0A3'
+};
+const CATEGORY_ICONS = { Study:'📚', Work:'💼', Entertainment:'🎬', Social:'💬', Other:'🕓' };
+
+/* ---------------- persistence helpers ---------------- */
+function loadState(){
+  try{
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if(!raw) return defaultState();
+    const parsed = JSON.parse(raw);
+    const base = defaultState();
+    return {
+      ...base,
+      ...parsed,
+      profile: { ...base.profile, ...(parsed.profile || {}) },
+      activities: Array.isArray(parsed.activities) ? parsed.activities : [],
+      sessions: Array.isArray(parsed.sessions) ? parsed.sessions : [],
+      goals: { ...base.goals, ...(parsed.goals || {}) }
+    };
+  }catch(e){
+    console.error('Could not read saved data, starting fresh.', e);
+    return defaultState();
+  }
+}
+function saveState(){
+  try{
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+  }catch(e){
+    console.error('Could not save data.', e);
+  }
+}
+function defaultState(){
+  return {
+    profile: { name: '' },
+    activities: [],
+    sessions: [],
+    goals: { studyGoalHours: 4, screenLimitHours: 3 }
+  };
+}
+
+let state = loadState();
+
+/* ==================================================================
+   LOCAL PROFILE (name only — no accounts, no server, one browser)
+   Shown once on first visit; editable any time via the sidebar chip.
+   ================================================================== */
+function initialsFor(name){
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  if(parts.length === 0) return 'ST';
+  if(parts.length === 1) return parts[0].slice(0,2).toUpperCase();
+  return (parts[0][0] + parts[1][0]).toUpperCase();
+}
+function renderProfileChip(){
+  const name = state.profile.name || 'Student';
+  document.getElementById('userName').textContent = name;
+  document.getElementById('userAv').textContent = initialsFor(name);
+}
+function openOnboard(prefill){
+  document.getElementById('onboardName').value = prefill || '';
+  document.getElementById('onboardOverlay').classList.add('show');
+  setTimeout(() => document.getElementById('onboardName').focus(), 50);
+}
+function closeOnboard(){
+  document.getElementById('onboardOverlay').classList.remove('show');
+}
+document.getElementById('onboardOverlay').addEventListener('click', (e) => {
+  if(e.target.id === 'onboardOverlay' && state.profile.name) closeOnboard();
+});
+document.addEventListener('keydown', (e) => {
+  if(e.key === 'Escape' && document.getElementById('onboardOverlay').classList.contains('show')
+     && state.profile.name) closeOnboard();
+});
+document.getElementById('onboardSaveBtn').addEventListener('click', () => {
+  const val = document.getElementById('onboardName').value.trim();
+  state.profile.name = val; // empty is fine — falls back to "Student"
+  saveState();
+  renderProfileChip();
+  renderGreeting();
+  closeOnboard();
+});
+document.getElementById('onboardName').addEventListener('keydown', (e) => {
+  if(e.key === 'Enter') document.getElementById('onboardSaveBtn').click();
+});
+document.getElementById('userChip').addEventListener('click', () => openOnboard(state.profile.name));
+if(!state.profile.name){ openOnboard(''); }
+
+/* ---------------- date utilities ---------------- */
+function todayStr(){ return dateStrOffset(0); }
+function dateStrOffset(offsetDays){
+  const d = new Date();
+  d.setHours(12, 0, 0, 0);
+  d.setDate(d.getDate() + offsetDays);
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
+function dayLabel(dateStr, offsetFromToday){
+  if(offsetFromToday === 0) return 'Today';
+  const d = new Date(dateStr + 'T00:00:00');
+  return d.toLocaleDateString('en-US', { weekday: 'short' });
+}
+function formatMinutes(min){
+  min = Math.round(min);
+  if(min < 60) return min + 'm';
+  const h = Math.floor(min/60), m = min%60;
+  return m === 0 ? h + 'h' : h + 'h ' + m + 'm';
+}
+function clamp(v, lo, hi){ return Math.max(lo, Math.min(hi, v)); }
+
+/* ---------------- day aggregation ---------------- */
+function computeDay(dateStr){
+  const acts = state.activities.filter(a => a.date === dateStr);
+  const sess = state.sessions.filter(s => s.date === dateStr);
+
+  const screenMinutes = acts.reduce((sum,a) => sum + a.minutes, 0);
+  const studyFromActivities = acts.filter(a => a.category === 'Study').reduce((s,a)=>s+a.minutes,0);
+  const studyFromSessions = sess.reduce((s,x)=>s+x.minutes,0);
+  const studyMinutes = studyFromActivities + studyFromSessions;
+  const focusSessionCount = sess.length;
+
+  const byCategory = {};
+  acts.forEach(a => { byCategory[a.category] = (byCategory[a.category]||0) + a.minutes; });
+
+  const goals = state.goals;
+  // Productivity score: weighted mix of goal completion, focus sessions,
+  // penalised by screen time that exceeds the daily limit. Clamped 0-100.
+  const studyComponent = clamp((studyMinutes / (goals.studyGoalHours*60)) * 60, 0, 60);
+  const sessionComponent = clamp(focusSessionCount * 8, 0, 24);
+  const overLimitMinutes = Math.max(0, screenMinutes - goals.screenLimitHours*60);
+  const penalty = clamp(overLimitMinutes / 6, 0, 30);
+  const productivityScore = Math.round(clamp(studyComponent + sessionComponent - penalty, 0, 100));
+
+  return { dateStr, screenMinutes, studyMinutes, focusSessionCount, byCategory, productivityScore, hasData: acts.length>0 || sess.length>0 };
+}
+
+function last7Days(){
+  const out = [];
+  for(let i=6; i>=0; i--){ out.push(computeDay(dateStrOffset(-i))); }
+  return out;
+}
+
+function computeStreak(){
+  // Consecutive days (ending today or yesterday) where study goal was met.
+  let streak = 0;
+  const goalMin = state.goals.studyGoalHours * 60;
+  for(let i=0; i<365; i++){
+    const day = computeDay(dateStrOffset(-i));
+    if(i === 0 && !day.hasData) continue; // today with nothing logged yet doesn't break the streak
+    if(day.studyMinutes >= goalMin){ streak++; }
+    else { break; }
+  }
+  return streak;
+}
+
+/* ==================================================================
+   NAVIGATION
+   ================================================================== */
+document.getElementById('navlist').addEventListener('click', (e) => {
+  const btn = e.target.closest('.navlink');
+  if(!btn) return;
+  document.querySelectorAll('.navlink').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  const target = btn.dataset.view;
+  document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+  document.getElementById('view-' + target).classList.add('active');
+  renderAll(); // recalculate in case data changed while on another tab
+});
+
+/* ==================================================================
+   DASHBOARD RENDER
+   ================================================================== */
+function renderGreeting(){
+  const hour = new Date().getHours();
+  const greetEl = document.getElementById('greeting');
+  let g = 'Good evening';
+  if(hour < 12) g = 'Good morning';
+  else if(hour < 17) g = 'Good afternoon';
+  const emoji = hour < 12 ? '👋' : (hour < 17 ? '☀️' : '🌙');
+  const name = state.profile.name;
+  greetEl.textContent = (name ? `${g}, ${name} ${emoji}` : `${g} ${emoji}`);
+  document.getElementById('todayDate').textContent = "Today's overview — " + new Date().toLocaleDateString('en-US', { weekday:'long', month:'short', day:'numeric' });
+}
+
+function renderStatCards(){
+  const today = computeDay(todayStr());
+  const yesterday = computeDay(dateStrOffset(-1));
+  const wrap = document.getElementById('statCards');
+
+  function deltaHtml(curr, prev){
+    if(prev === 0 && curr === 0) return '<div class="delta flat">No change</div>';
+    if(prev === 0) return '<div class="delta up">New today</div>';
+    const pct = Math.round(((curr - prev) / prev) * 100);
+    if(pct === 0) return '<div class="delta flat">Same as yesterday</div>';
+    if(pct > 0) return `<div class="delta up">▲ ${pct}% vs yesterday</div>`;
+    return `<div class="delta down">▼ ${Math.abs(pct)}% vs yesterday</div>`;
+  }
+
+  const streak = computeStreak();
+  const cards = [
+    { ic:'📱', bg:'var(--clay-tint)', label:'Screen Time', val: formatMinutes(today.screenMinutes), delta: deltaHtml(today.screenMinutes, yesterday.screenMinutes) },
+    { ic:'📚', bg:'var(--sage-tint)', label:'Study Time', val: formatMinutes(today.studyMinutes), delta: deltaHtml(today.studyMinutes, yesterday.studyMinutes) },
+    { ic:'🎯', bg:'var(--blue-tint)', label:'Focus Sessions', val: today.focusSessionCount, delta: deltaHtml(today.focusSessionCount, yesterday.focusSessionCount) },
+    { ic:'⚡', bg:'var(--amber-tint)', label:'Productivity Score', val: today.productivityScore + '/100', delta: deltaHtml(today.productivityScore, yesterday.productivityScore) },
+    { ic:'🔥', bg:'var(--amber-tint)', label:'Current Streak', val: streak + ' Day' + (streak===1?'':'s'), delta: '<div class="delta flat">Keep it up!</div>' },
+  ];
+
+  wrap.innerHTML = cards.map(c => `
+    <div class="card stat-card">
+      <div class="stat-top"><span class="icon-badge" style="background:${c.bg}">${c.ic}</span></div>
+      <div class="val">${c.val}</div>
+      <div class="lbl">${c.label}</div>
+      ${c.delta}
+    </div>
+  `).join('');
+}
+
+function miniBarChart(days, targetId){
+  const maxVal = Math.max(1, ...days.map(d => Math.max(d.studyMinutes, d.screenMinutes)));
+  const html = `
+    <div class="chart-key">
+      <span><i style="background:var(--sage)"></i> Study</span>
+      <span><i style="background:var(--amber)"></i> Screen</span>
+    </div>
+    <div class="chart">
+      ${days.map((d,i) => {
+        const studyH = Math.round((d.studyMinutes / maxVal) * 108);
+        const screenH = Math.round((d.screenMinutes / maxVal) * 108);
+        return `<div class="chart-col">
+          <div class="chart-bars">
+            <div class="chart-bar" style="height:${Math.max(studyH,2)}px" title="Study: ${formatMinutes(d.studyMinutes)}"></div>
+            <div class="chart-bar screen" style="height:${Math.max(screenH,2)}px" title="Screen: ${formatMinutes(d.screenMinutes)}"></div>
+          </div>
+          <div class="chart-day">${dayLabel(d.dateStr, i-6)}</div>
+        </div>`;
+      }).join('')}
+    </div>`;
+  document.getElementById(targetId).innerHTML = html;
+}
+
+function renderGoalsBlock(targetId, compact){
+  const today = computeDay(todayStr());
+  const goals = state.goals;
+  const studyPct = clamp(Math.round((today.studyMinutes / (goals.studyGoalHours*60)) * 100), 0, 999);
+  const screenPct = clamp(Math.round((today.screenMinutes / (goals.screenLimitHours*60)) * 100), 0, 999);
+
+  const html = `
+    <div class="goal-row">
+      <div class="goal-top"><span class="name">Study Goal — ${goals.studyGoalHours}h</span><span class="amt">${formatMinutes(today.studyMinutes)} · ${Math.min(studyPct,100)}%</span></div>
+      <div class="bar-track"><div class="bar-fill" style="width:${Math.min(studyPct,100)}%"></div></div>
+    </div>
+    <div class="goal-row">
+      <div class="goal-top"><span class="name">Screen-Time Limit — ${goals.screenLimitHours}h</span><span class="amt">${formatMinutes(today.screenMinutes)} · ${Math.min(screenPct,100)}%</span></div>
+      <div class="bar-track"><div class="bar-fill ${screenPct>100?'over':''}" style="width:${Math.min(screenPct,100)}%"></div></div>
+    </div>
+  `;
+  document.getElementById(targetId).innerHTML = html;
+}
+
+function renderDonut(){
+  const today = computeDay(todayStr());
+  const cats = Object.keys(today.byCategory);
+  const wrap = document.getElementById('dashDonut');
+  if(cats.length === 0){
+    wrap.innerHTML = `<div class="empty-state"><span class="big">📭</span>No screen activity logged today yet.</div>`;
+    return;
+  }
+  const total = today.screenMinutes;
+  let acc = 0;
+  const segments = cats.map(c => {
+    const pct = today.byCategory[c] / total;
+    const start = acc * 360;
+    acc += pct;
+    const end = acc * 360;
+    return `${CATEGORY_COLORS[c] || '#999'} ${start}deg ${end}deg`;
+  }).join(', ');
+
+  const legend = cats
+    .sort((a,b) => today.byCategory[b] - today.byCategory[a])
+    .map(c => `
+      <div class="legend-row">
+        <span class="legend-dot" style="background:${CATEGORY_COLORS[c]||'#999'}"></span>
+        <span class="legend-name">${c}</span>
+        <span class="legend-val">${formatMinutes(today.byCategory[c])}</span>
+      </div>`).join('');
+
+  wrap.innerHTML = `
+    <div class="donut-wrap">
+      <div class="donut" style="background:conic-gradient(${segments})"></div>
+      <div class="donut-legend">${legend}</div>
+    </div>`;
+}
+
+function renderProductivityTrend(){
+  const days = last7Days();
+  const wrap = document.getElementById('dashTrend');
+  const vals = days.map(d => d.productivityScore);
+  const w = 280, h = 120, pad = 10;
+  const maxV = Math.max(100, ...vals);
+  const stepX = (w - pad*2) / (vals.length - 1);
+  const points = vals.map((v,i) => {
+    const x = pad + i*stepX;
+    const y = h - pad - (v/maxV) * (h - pad*2);
+    return [x,y];
+  });
+  const linePath = points.map((p,i) => (i===0?'M':'L') + p[0].toFixed(1) + ',' + p[1].toFixed(1)).join(' ');
+  const areaPath = linePath + ` L${points[points.length-1][0].toFixed(1)},${h-pad} L${points[0][0].toFixed(1)},${h-pad} Z`;
+  const dots = points.map((p,i) => `<circle class="trend-dot" cx="${p[0].toFixed(1)}" cy="${p[1].toFixed(1)}" r="3.5"><title>${dayLabel(days[i].dateStr, i-6)}: ${vals[i]}</title></circle>`).join('');
+
+  wrap.innerHTML = `
+    <div class="trend-wrap">
+      <svg class="trend-svg" viewBox="0 0 ${w} ${h}" preserveAspectRatio="none">
+        <defs>
+          <linearGradient id="trendGradient" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stop-color="var(--sage)" stop-opacity="0.35"/>
+            <stop offset="100%" stop-color="var(--sage)" stop-opacity="0"/>
+          </linearGradient>
+        </defs>
+        <path class="trend-area" d="${areaPath}"></path>
+        <path class="trend-path" d="${linePath}"></path>
+        ${dots}
+      </svg>
+      <div class="trend-labels">${days.map((d,i) => `<span>${dayLabel(d.dateStr, i-6)}</span>`).join('')}</div>
+    </div>`;
+}
+
+function renderQuickFocus(){
+  const today = computeDay(todayStr());
+  const wrap = document.getElementById('dashQuickFocus');
+  wrap.innerHTML = `
+    <div class="qf-time">${today.focusSessionCount}</div>
+    <div class="qf-sub">focus session${today.focusSessionCount===1?'':'s'} completed today</div>
+    <button class="qf-btn" id="qfStartBtn">▶ Start Focus</button>
+  `;
+  document.getElementById('qfStartBtn').addEventListener('click', () => {
+    document.querySelector('.navlink[data-view="timer"]').click();
+  });
+}
+
+function renderRecentActivitiesMini(){
+  const wrap = document.getElementById('dashRecentActivities');
+  const recent = [...state.activities].sort((a,b) => b.ts - a.ts).slice(0,5);
+  if(recent.length === 0){
+    wrap.innerHTML = `<div class="empty-state"><span class="big">📝</span>No activities logged yet.</div>`;
+    return;
+  }
+  wrap.innerHTML = recent.map(a => `
+    <div class="mini-act-row">
+      <div class="mini-act-ic" style="background:${CATEGORY_COLORS[a.category]}22;">${CATEGORY_ICONS[a.category]||'🕓'}</div>
+      <div>
+        <div class="mini-act-name">${escapeHtml(a.name)}</div>
+        <div class="mini-act-meta">${formatMinutes(a.minutes)} · ${a.category}</div>
+      </div>
+      <div class="mini-act-time">${a.date === todayStr() ? new Date(a.ts).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}) : 'Earlier'}</div>
+    </div>
+  `).join('');
+}
+
+function renderInsights(){
+  const today = computeDay(todayStr());
+  const yesterday = computeDay(dateStrOffset(-1));
+  const goals = state.goals;
+  const insights = [];
+
+  if(!today.hasData){
+    insights.push({ic:'👋', text:'Log an activity or start a focus session to see personalised insights here.'});
+  } else {
+    if(yesterday.studyMinutes > 0){
+      const pct = Math.round(((today.studyMinutes - yesterday.studyMinutes) / yesterday.studyMinutes) * 100);
+      if(pct > 0) insights.push({ic:'💡', text:`Your study time increased by ${pct}% compared with yesterday.`});
+      else if(pct < 0) insights.push({ic:'💡', text:`Your study time is down ${Math.abs(pct)}% compared with yesterday.`});
+      else insights.push({ic:'💡', text:`Your study time matches yesterday's exactly.`});
+    } else if(today.studyMinutes > 0){
+      insights.push({ic:'💡', text:`You're building momentum — no study time was logged yesterday.`});
+    }
+
+    const entertainmentMin = today.byCategory['Entertainment'] || 0;
+    if(entertainmentMin > goals.screenLimitHours * 60 * 0.4){
+      insights.push({ic:'⚠️', text:'Entertainment usage is above your daily target.'});
+    }
+
+    if(today.screenMinutes > goals.screenLimitHours * 60){
+      insights.push({ic:'⚠️', text:`You've gone ${formatMinutes(today.screenMinutes - goals.screenLimitHours*60)} over your screen-time limit today.`});
+    } else if(today.focusSessionCount === 0){
+      insights.push({ic:'💡', text:'You haven\'t started a focus session today — even one 25-minute block helps.'});
+    }
+  }
+
+  if(insights.length === 0) insights.push({ic:'✅', text:"You're on track today — keep it up!"});
+
+  document.getElementById('dashInsights').innerHTML = insights.slice(0,3).map(i => `
+    <div class="insight-item"><span class="ic">${i.ic}</span><span>${i.text}</span></div>
+  `).join('');
+}
+
+function renderStreak(){
+  document.getElementById('streakNum').textContent = computeStreak();
+}
+
+/* ==================================================================
+   FOCUS TIMER
+   ================================================================== */
+const RING_CIRC = 2 * Math.PI * 100; // r=100
+let timerState = {
+  totalSeconds: 25*60,
+  remaining: 25*60,
+  running: false,
+  intervalId: null,
+  selectedMin: 25
+};
+
+document.getElementById('presetRow').addEventListener('click', (e) => {
+  const btn = e.target.closest('.preset-btn');
+  if(!btn || timerState.running) return;
+  document.querySelectorAll('.preset-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  const min = parseInt(btn.dataset.min, 10);
+  timerState.selectedMin = min;
+  timerState.totalSeconds = min*60;
+  timerState.remaining = min*60;
+  updateRingDisplay();
+});
+
+function updateRingDisplay(){
+  const m = Math.floor(timerState.remaining/60).toString().padStart(2,'0');
+  const s = Math.floor(timerState.remaining%60).toString().padStart(2,'0');
+  document.getElementById('ringTime').textContent = `${m}:${s}`;
+  const frac = 1 - (timerState.remaining / timerState.totalSeconds);
+  const offset = RING_CIRC * (1 - frac);
+  document.getElementById('ringFg').style.strokeDasharray = RING_CIRC;
+  document.getElementById('ringFg').style.strokeDashoffset = offset;
+}
+
+function setTimerButtons(){
+  document.getElementById('startBtn').disabled = timerState.running;
+  document.getElementById('pauseBtn').disabled = !timerState.running;
+  document.querySelectorAll('.preset-btn').forEach(b => b.disabled = timerState.running || timerState.remaining !== timerState.totalSeconds);
+  document.getElementById('ringState').textContent = timerState.running ? 'Focusing…' : (timerState.remaining === timerState.totalSeconds ? 'Ready' : 'Paused');
+}
+
+document.getElementById('startBtn').addEventListener('click', () => {
+  if(timerState.running) return;
+  timerState.running = true;
+  setTimerButtons();
+  document.getElementById('timerStatus').textContent = `Session running — ${timerState.selectedMin} minute focus block. Stay on task!`;
+  timerState.intervalId = setInterval(() => {
+    timerState.remaining--;
+    updateRingDisplay();
+    if(timerState.remaining <= 0){
+      completeSession();
+    }
+  }, 1000);
+});
+
+document.getElementById('pauseBtn').addEventListener('click', () => {
+  if(!timerState.running) return;
+  timerState.running = false;
+  clearInterval(timerState.intervalId);
+  setTimerButtons();
+  document.getElementById('timerStatus').textContent = 'Paused. Press Start to resume where you left off.';
+});
+
+document.getElementById('resetTimerBtn').addEventListener('click', () => {
+  clearInterval(timerState.intervalId);
+  timerState.running = false;
+  timerState.remaining = timerState.totalSeconds;
+  updateRingDisplay();
+  setTimerButtons();
+  document.getElementById('timerStatus').textContent = 'Timer reset. Choose 25 or 50 minutes, then press Start.';
+});
+
+function completeSession(){
+  clearInterval(timerState.intervalId);
+  timerState.running = false;
+  timerState.remaining = 0;
+  updateRingDisplay();
+
+  state.sessions.push({
+    id: 's' + Date.now() + '-' + Math.random().toString(36).slice(2, 7),
+    minutes: timerState.selectedMin,
+    date: todayStr(),
+    ts: Date.now()
+  });
+  saveState();
+
+  document.getElementById('timerStatus').textContent = `Nice work — ${timerState.selectedMin} minute session completed and logged as study time.`;
+  document.getElementById('ringState').textContent = 'Completed 🎉';
+
+  setTimeout(() => {
+    timerState.remaining = timerState.totalSeconds;
+    updateRingDisplay();
+    setTimerButtons();
+  }, 1500);
+
+  renderAll();
+}
+
+function renderSessionLog(){
+  const todaySessions = state.sessions.filter(s => s.date === todayStr()).sort((a,b) => b.ts - a.ts);
+  const wrap = document.getElementById('sessionLog');
+  if(todaySessions.length === 0){
+    wrap.innerHTML = `<div class="empty-state">No focus sessions completed yet today.</div>`;
+    return;
+  }
+  wrap.innerHTML = todaySessions.map(s => `
+    <div class="session-item">
+      <span>Focus session</span>
+      <span>${s.minutes} min · ${new Date(s.ts).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}</span>
+    </div>
+  `).join('');
+}
+
+/* ==================================================================
+   ACTIVITY TRACKER
+   ================================================================== */
+document.getElementById('activityForm').addEventListener('submit', (e) => {
+  e.preventDefault();
+  const nameEl = document.getElementById('actName');
+  const catEl = document.getElementById('actCategory');
+  const durEl = document.getElementById('actDuration');
+  const errEl = document.getElementById('actError');
+
+  const name = nameEl.value.trim();
+  const category = catEl.value;
+  const duration = parseInt(durEl.value, 10);
+
+  if(!name){ errEl.textContent = 'Please name the activity.'; return; }
+  if(!duration || duration <= 0){ errEl.textContent = 'Duration must be a positive number of minutes.'; return; }
+  if(duration > 600){ errEl.textContent = "That's more than 10 hours — double-check the duration."; return; }
+
+  errEl.textContent = '';
+  state.activities.push({
+    id: 'a' + Date.now() + '-' + Math.random().toString(36).slice(2, 7),
+    name, category, minutes: duration,
+    date: todayStr(), ts: Date.now()
+  });
+  saveState();
+  nameEl.value=''; durEl.value=''; catEl.value='Study';
+  nameEl.focus();
+  renderAll();
+});
+
+function renderActivityTable(){
+  const todays = state.activities.filter(a => a.date === todayStr()).sort((a,b) => b.ts - a.ts);
+  const wrap = document.getElementById('activityTableWrap');
+  if(todays.length === 0){
+    wrap.innerHTML = `
+      <div class="empty-state">
+        <span class="big">📝</span>Nothing logged yet today.
+        <div><button class="btn-sample" id="sampleBtn2">Load sample data</button></div>
+      </div>`;
+    const b = document.getElementById('sampleBtn2');
+    if(b) b.addEventListener('click', loadSampleData);
+    return;
+  }
+  wrap.innerHTML = `
+    <div class="activity-table-wrap">
+    <table class="activity-table">
+      <thead><tr><th>Activity</th><th>Category</th><th>Duration</th><th>Time</th><th></th></tr></thead>
+      <tbody>
+        ${todays.map(a => `
+          <tr>
+            <td>${escapeHtml(a.name)}</td>
+            <td><span class="cat-badge" style="background:${CATEGORY_COLORS[a.category]}22; color:${CATEGORY_COLORS[a.category]}">${a.category}</span></td>
+            <td>${formatMinutes(a.minutes)}</td>
+            <td>${new Date(a.ts).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}</td>
+            <td><button class="del-btn" data-id="${a.id}">Remove</button></td>
+          </tr>`).join('')}
+      </tbody>
+    </table>
+    </div>`;
+  wrap.querySelectorAll('.del-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      state.activities = state.activities.filter(a => a.id !== btn.dataset.id);
+      saveState();
+      renderAll();
+    });
+  });
+}
+
+function escapeHtml(str){
+  const d = document.createElement('div');
+  d.textContent = str;
+  return d.innerHTML;
+}
+
+/* ==================================================================
+   GOALS
+   ================================================================== */
+document.getElementById('saveGoalsBtn').addEventListener('click', () => {
+  const s = parseFloat(document.getElementById('goalStudy').value);
+  const c = parseFloat(document.getElementById('goalScreen').value);
+  if(s > 0) state.goals.studyGoalHours = s;
+  if(c > 0) state.goals.screenLimitHours = c;
+  saveState();
+  const msg = document.getElementById('goalsSavedMsg');
+  msg.classList.add('show');
+  setTimeout(() => msg.classList.remove('show'), 1800);
+  renderAll();
+});
+
+function renderGoalsInputs(){
+  document.getElementById('goalStudy').value = state.goals.studyGoalHours;
+  document.getElementById('goalScreen').value = state.goals.screenLimitHours;
+}
+
+/* ==================================================================
+   WEEKLY ANALYTICS
+   ================================================================== */
+function renderWeeklyAnalytics(){
+  const days = last7Days();
+  miniBarChart(days, 'weekChartFull');
+
+  const studyVals = days.map(d => d.studyMinutes);
+  const avgStudy = studyVals.reduce((a,b)=>a+b,0) / days.length;
+  const bestDay = days.reduce((best,d) => d.studyMinutes > best.studyMinutes ? d : best, days[0]);
+  const totalSessions = days.reduce((s,d)=>s+d.focusSessionCount,0);
+  const avgScore = Math.round(days.reduce((s,d)=>s+d.productivityScore,0) / days.length);
+
+  document.getElementById('weekMiniStats').innerHTML = `
+    <div class="mini-stat"><div class="v">${formatMinutes(avgStudy)}</div><div class="l">Avg study / day</div></div>
+    <div class="mini-stat"><div class="v">${dayLabel(bestDay.dateStr, days.indexOf(bestDay)-6)}</div><div class="l">Best day</div></div>
+    <div class="mini-stat"><div class="v">${totalSessions}</div><div class="l">Focus sessions (7d)</div></div>
+    <div class="mini-stat"><div class="v">${avgScore}</div><div class="l">Avg productivity score</div></div>
+  `;
+
+  renderRecommendations(days);
+}
+
+function renderRecommendations(days){
+  const today = computeDay(todayStr());
+  const streak = computeStreak();
+  const recs = [];
+
+  if(today.focusSessionCount >= 3){
+    recs.push({ic:'💡', text:`You've already completed ${today.focusSessionCount} focus sessions today. Consider taking a short break before your next session.`});
+  }
+  if(streak >= 3){
+    recs.push({ic:'🔥', text:`You're on a ${streak}-day streak of hitting your study goal — keep the momentum going.`});
+  }
+  const studyPct = today.studyMinutes / (state.goals.studyGoalHours*60);
+  if(studyPct >= 0.8 && studyPct < 1){
+    recs.push({ic:'🎯', text:`You're at ${Math.round(studyPct*100)}% of today's study goal — one more short session gets you there.`});
+  }
+  const entertainmentMin = today.byCategory['Entertainment'] || 0;
+  if(entertainmentMin > state.goals.screenLimitHours*60*0.4){
+    recs.push({ic:'⚠️', text:'Entertainment time is trending high today — a short walk can help you reset focus.'});
+  }
+  if(recs.length === 0){
+    recs.push({ic:'✅', text:'No specific alerts right now — log more activity or complete a focus session to unlock personalised tips.'});
+  }
+
+  document.getElementById('recommendations').innerHTML = recs.map(r => `
+    <div class="insight-item"><span class="ic">${r.ic}</span><span>${r.text}</span></div>
+  `).join('');
+}
+
+/* ==================================================================
+   SAMPLE DATA (for first-time users / demo screenshots)
+   ================================================================== */
+function loadSampleData(){
+  const cats = ['Study','Work','Entertainment','Social','Other'];
+  const names = {
+    Study: ['DSA practice','DBMS revision','Assignment writing','Lab record'],
+    Work: ['Project meeting','Documentation'],
+    Entertainment: ['YouTube','Netflix','Gaming'],
+    Social: ['Instagram','WhatsApp chats'],
+    Other: ['Browsing','Misc.']
+  };
+  for(let i=6; i>=0; i--){
+    const date = dateStrOffset(-i);
+    const numActs = 2 + Math.floor(Math.random()*3);
+    for(let j=0;j<numActs;j++){
+      const cat = cats[Math.floor(Math.random()*cats.length)];
+      const pool = names[cat];
+      state.activities.push({
+        id: 'demo'+date+j+Math.random(),
+        name: pool[Math.floor(Math.random()*pool.length)],
+        category: cat,
+        minutes: 15 + Math.floor(Math.random()*80),
+        date, ts: Date.now() - i*86400000
+      });
+    }
+    const numSessions = Math.floor(Math.random()*4);
+    for(let k=0;k<numSessions;k++){
+      state.sessions.push({
+        id: 'demoS'+date+k+Math.random(),
+        minutes: Math.random() > 0.5 ? 25 : 50,
+        date, ts: Date.now() - i*86400000
+      });
+    }
+  }
+  saveState();
+  renderAll();
+}
+
+/* ==================================================================
+   RESET
+   ================================================================== */
+document.getElementById('resetBtn').addEventListener('click', () => {
+  if(confirm('This clears all logged activities, sessions and goal edits. Continue?')){
+    state = defaultState();
+    saveState();
+    renderAll();
+  }
+});
+
+/* ==================================================================
+   MASTER RENDER
+   ================================================================== */
+function renderAll(){
+  renderGreeting();
+  renderProfileChip();
+  renderStatCards();
+  renderGoalsBlock('dashGoals');
+  renderDonut();
+  renderProductivityTrend();
+  renderQuickFocus();
+  renderRecentActivitiesMini();
+  renderInsights();
+  renderStreak();
+  renderSessionLog();
+  renderActivityTable();
+  renderGoalsInputs();
+  renderGoalsBlock('goalsProgress');
+  renderWeeklyAnalytics();
+
+  // empty state + sample-data offer on dashboard when nothing logged at all
+  if(state.activities.length === 0 && state.sessions.length === 0){
+    const cardsWrap = document.getElementById('statCards');
+    const note = document.createElement('div');
+    note.className = 'empty-state';
+    note.style.gridColumn = '1 / -1';
+    note.innerHTML = `<span class="big">🌱</span>No data yet — add an activity, start a focus session, or
+      <button class="btn-sample" id="sampleBtn1">load demo data</button> to explore the dashboard.`;
+    cardsWrap.appendChild(note);
+    const b = document.getElementById('sampleBtn1');
+    if(b) b.addEventListener('click', loadSampleData);
+  }
+}
+
+document.getElementById('addActivityBtn').addEventListener('click', () => {
+  document.querySelector('.navlink[data-view="activities"]').click();
+  setTimeout(() => document.getElementById('actName').focus(), 50);
+});
+
+updateRingDisplay();
+setTimerButtons();
+renderAll();
+</script>
+</body>
+</html>
